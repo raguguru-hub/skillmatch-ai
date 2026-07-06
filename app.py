@@ -1,46 +1,50 @@
 import streamlit as st
-import pdfplumber
-from skills import company_skills
+import PyPDF2
+
+st.set_page_config(page_title="SkillMatch AI", page_icon="🤖")
+
+st.title("SkillMatch AI 🤖")
+
+# Upload Resume
+uploaded_file = st.file_uploader("Upload your Resume (PDF)", type=["pdf"])
+
+# Company Selection
+company = st.selectbox("Select Company", ["TCS", "Infosys"])
+
+# Company Skill Requirements
+company_skills = {
+    "TCS": ["python", "sql", "communication", "machine learning", "data analysis", "excel"],
+    "Infosys": ["java", "sql", "communication", "problem solving", "html", "css"]
+}
 
 # Extract text from PDF
-def extract_text(file):
+def extract_text(pdf_file):
+    reader = PyPDF2.PdfReader(pdf_file)
     text = ""
-    with pdfplumber.open(file) as pdf:
-        for page in pdf.pages:
+    for page in reader.pages:
+        if page.extract_text():
             text += page.extract_text()
     return text.lower()
 
-# Extract skills (simple matching)
-def extract_skills(text):
-    all_skills = ["python", "java", "sql", "dbms", "communication", "dsa", "system design"]
-    found = []
-    for skill in all_skills:
-        if skill in text:
-            found.append(skill)
-    return found
-
-# UI
-st.title("SkillMatch AI 🤖")
-
-uploaded_file = st.file_uploader("Upload your Resume (PDF)", type=["pdf"])
-company = st.selectbox("Select Company", list(company_skills.keys()))
-
-if uploaded_file:
-    text = extract_text(uploaded_file)
-    resume_skills = extract_skills(text)
+# Main Logic
+if uploaded_file is not None:
+    resume_text = extract_text(uploaded_file)
 
     required_skills = company_skills[company]
+    matched_skills = []
 
-    matched = list(set(resume_skills) & set(required_skills))
-    score = (len(matched) / len(required_skills)) * 100
+    for skill in required_skills:
+        if skill in resume_text:
+            matched_skills.append(skill)
 
-    st.subheader("📊 Result")
-    st.write("Match Score:", round(score, 2), "%")
+    match_percent = (len(matched_skills) / len(required_skills)) * 100
 
-    if score >= 60:
-        st.success("✅ You are Eligible!")
-    else:
-        st.error("❌ Not Eligible")
+    st.subheader("📊 Match Result")
+    st.success(f"Your resume matches **{round(match_percent)}%** with {company}")
 
-    missing = list(set(required_skills) - set(resume_skills))
-    st.write("❗ Missing Skills:", missing)
+    st.subheader("✅ Matched Skills")
+    st.write(matched_skills)
+
+    st.subheader("❌ Missing Skills")
+    missing = list(set(required_skills) - set(matched_skills))
+    st.write(missing)
